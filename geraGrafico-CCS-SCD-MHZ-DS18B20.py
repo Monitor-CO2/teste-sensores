@@ -2,7 +2,8 @@
 # coding: utf-8
 
 '''
-Lê arquivos com dados dos sensores CCS811, SCD30 e MHZ19C e gera gráfico com Plotly
+Lê arquivos com dados dos sensores CCS811, SCD30, MHZ19C e DS18B20 e 
+gera gráfico com Plotly
 Gráfico é gravado em um arquivo .html que tem a data como nome
 Dados dos sensores gravados via serial logger em um arquivo csv 
 com timestamp no formato ISO 8601 na primeira coluna
@@ -10,7 +11,7 @@ com timestamp no formato ISO 8601 na primeira coluna
 Nome dos arquivos segue padrão "serial-DATA-NOMESENSOR.log"
 onde
 DATA: no formato AAAA-MM-DD
-NOMESENSOR: CCS811, SCD30, MHZ19
+NOMESENSOR: CCS811, SCD30, MHZ19, DS18B20 (este último só temperatura)
 
 Como executar? Exemplo:
 python geraGrafico-CCS-SCD-MHZ-DS18B20.py 2021-11-09 dados docs "\t"
@@ -70,12 +71,23 @@ dfMHZ['Data'] = pd.to_datetime(dfMHZ['Data'])
 dfMHZ['MHZ1-CO2ppm-Serial'] = pd.to_numeric(dfMHZ['MHZ1-CO2ppm-Serial'])
 dfMHZ.info()
 
+# DS18B20 #######################
+dfDS18B20 = pd.read_csv(pasta_entrada+'/'+'serial-'+data+'-DS18B20.log', 
+                    delimiter='\t', 
+                    names=['Data','DS18B20-Celsius','SensorName'],
+                    parse_dates=[1],
+                    engine='python')
+dfDS18B20['Data'] = pd.to_datetime(dfDS18B20['Data'])
+dfDS18B20['DS18B20-Celsius'] = pd.to_numeric(dfDS18B20['DS18B20-Celsius'])
+dfDS18B20.info()
+
 # TODO: Verificar se merge_asof é a melhor solução
 dfTotal = pd.merge_asof(dfSCD, dfCCS, on = 'Data')
 dfTotal = pd.merge_asof(dfTotal, dfMHZ, on = 'Data')
+dfTotal = pd.merge_asof(dfTotal, dfDS18B20, on = 'Data')
 
 fig = px.line(dfTotal, x='Data', 
-    y=['CCS1-CO2ppm','CCS2-CO2ppm','SCD30-CO2ppm','MHZ1-CO2ppm-PWM','MHZ2-CO2ppm-PWM'])
+    y=['CCS1-CO2ppm','CCS2-CO2ppm','SCD30-CO2ppm','MHZ1-CO2ppm-PWM','MHZ2-CO2ppm-PWM','DS18B20-Celsius'])
 fig.show()
 
 import plotly.io as pio
